@@ -5,7 +5,7 @@ export interface SimilarVectorResult {
 
 export abstract class BaseVectorStore {
   abstract getSimilarVector(
-    vector: number[]
+    vector: number[],
   ): Promise<SimilarVectorResult | null>;
   abstract setVector(vector: number[], query: string): Promise<void>;
   abstract deleteOldestVector(): Promise<void>;

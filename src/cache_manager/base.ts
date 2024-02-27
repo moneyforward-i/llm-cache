@@ -1,4 +1,11 @@
+import {
+  BaseCache,
+  deserializeStoredGeneration,
+  serializeGeneration,
+} from "@langchain/core/caches";
+import { Generation } from "@langchain/core/outputs";
 import { BaseCacheStore } from "../cache_store/base";
+import { BaseEmbedding } from "../embedding";
 import { BaseVectorStore } from "../vector_store/base";
 
 export enum CacheEvictionPolicy {
@@ -9,24 +16,34 @@ export enum CacheEvictionPolicy {
 interface CacheManagerConfiguration {
   cacheStore: BaseCacheStore;
   vectorStore: BaseVectorStore;
+  embbeddings: BaseEmbedding;
   evictionPolicy: CacheEvictionPolicy;
   maxSize?: number;
 }
 
-export class CacheManager {
+export class CacheManager extends BaseCache {
   private _cacheStore: BaseCacheStore;
   private _vectorStore: BaseVectorStore;
+  private _embeddings: BaseEmbedding;
   private _evictionPolicy: CacheEvictionPolicy;
   private _maxSize?: number;
   constructor(configuration: CacheManagerConfiguration) {
+    super();
     this._cacheStore = configuration.cacheStore;
     this._vectorStore = configuration.vectorStore;
+    this._embeddings = configuration.embbeddings;
     this._evictionPolicy = configuration.evictionPolicy;
     this._maxSize = configuration.maxSize;
   }
 
   // save data in both cache and vector store
-  async save(query: string, embedddedQuery: number[], result: string) {
+  async update(
+    prompt: string,
+    llmKey: string,
+    value: Generation[],
+  ): Promise<void> {
+    const embedddedQuery = await this._embeddings.embed(prompt);
+
     // total size of cache
     switch (this._evictionPolicy) {
       case CacheEvictionPolicy.fifo:
@@ -39,28 +56,34 @@ export class CacheManager {
               this._vectorStore.deleteOldestVector(),
             ]);
           }
-
-          await Promise.all([
-            this._cacheStore.setCache(query, result),
-            this._vectorStore.setVector(embedddedQuery, query),
-          ]);
-        } else {
-          await Promise.all([
-            this._cacheStore.setCache(query, result),
-            this._vectorStore.setVector(embedddedQuery, query),
-          ]);
         }
+
+        await Promise.all([
+          this._cacheStore.setCache(
+            prompt,
+            JSON.stringify(value.map(serializeGeneration)),
+          ),
+          this._vectorStore.setVector(embedddedQuery, prompt),
+        ]);
+
         break;
       default:
         break;
     }
   }
 
-  public get cacheStore(): BaseCacheStore {
-    return this._cacheStore;
-  }
+  async lookup(prompt: string, llmKey: string): Promise<Generation[] | null> {
+    const embedddedQuery = await this._embeddings.embed(prompt);
+    const similarEmbeddedQuery =
+      await this._vectorStore.getSimilarVector(embedddedQuery);
+    if (similarEmbeddedQuery?.query) {
+      const cachedResult = await this._cacheStore.getCache(
+        similarEmbeddedQuery.query,
+      );
+      if (cachedResult)
+        return JSON.parse(cachedResult).map(deserializeStoredGeneration);
+    }
 
-  public get vectorStore(): BaseVectorStore {
-    return this._vectorStore;
+    return null;
   }
 }

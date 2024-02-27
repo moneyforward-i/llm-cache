@@ -19,7 +19,7 @@ export class FaissVectorStore extends BaseVectorStore {
   }
 
   async getSimilarVector(
-    vector: number[]
+    vector: number[],
   ): Promise<SimilarVectorResult | null> {
     const totalVector = this.index.ntotal();
     if (totalVector < 1) return null;
@@ -38,7 +38,9 @@ export class FaissVectorStore extends BaseVectorStore {
 
   async setVector(vector: number[], query: string): Promise<void> {
     if (vector.length !== this.dimension) {
-      throw new Error(`Dimension of vector is not ${this.dimension}`);
+      throw new Error(
+        `Dimension of vector (${vector.length}) is not ${this.dimension}`,
+      );
     }
     this.index.add(vector);
     const currentPosition = this.index.ntotal() - 1;
