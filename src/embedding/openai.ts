@@ -1,5 +1,5 @@
+import { OpenAIEmbeddings } from "@langchain/openai";
 import { BaseEmbedding } from "./base";
-import { OpenAIEmbeddings } from "langchain/embeddings/openai";
 
 export class OpenAIEmbedding extends BaseEmbedding {
   private openaiEmbeddings: OpenAIEmbeddings;

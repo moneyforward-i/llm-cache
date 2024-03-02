@@ -46,11 +46,13 @@ export class ElasticSearchCacheStore extends BaseCacheStore {
       },
     });
 
-    if (result.body.hits.hits.length === 0) {
+    if (result.hits.hits.length === 0) {
       return null;
     }
 
-    return result.body.hits.hits[0]._source[this.cacheValueFieldName];
+    const source = result.hits.hits[0]._source as Record<string, string>;
+
+    return source[this.cacheValueFieldName];
   }
 
   async deleteByKey(key: string): Promise<void> {
@@ -83,6 +85,6 @@ export class ElasticSearchCacheStore extends BaseCacheStore {
     const result = await this.client.count({
       index: this.indexName,
     });
-    return result.body.count;
+    return result.count;
   }
 }

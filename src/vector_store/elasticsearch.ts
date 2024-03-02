@@ -33,7 +33,7 @@ export class ElasticSearchVectorStore extends BaseVectorStore {
   }
 
   async getSimilarVector(
-    vector: number[]
+    vector: number[],
   ): Promise<SimilarVectorResult | null> {
     const result = await this.client.search({
       index: this.indexName,
@@ -56,22 +56,21 @@ export class ElasticSearchVectorStore extends BaseVectorStore {
       },
     });
 
-    if (result.body.hits.hits.length === 0) {
+    if (result.hits.hits.length === 0) {
       return null;
     }
 
-    const similarVector = result.body.hits.hits.sort(
-      (a: GetSimilarVectorResult, b: GetSimilarVectorResult) =>
-        b._score - a._score
-    )[0];
+    const similarVector = result.hits.hits.sort(
+      (a, b) => b!._score! - a!._score!,
+    )[0] as GetSimilarVectorResult;
 
-    if (similarVector["_score"] < this.defaultScoreThreshold) {
+    if (similarVector._score < this.defaultScoreThreshold) {
       return null;
     }
 
     return {
-      vector: similarVector["_source"][this.vectorFieldName],
-      query: similarVector["_source"][this.queryFieldName],
+      vector: similarVector._source[this.vectorFieldName],
+      query: similarVector._source[this.queryFieldName],
     };
   }
 
@@ -103,6 +102,6 @@ export class ElasticSearchVectorStore extends BaseVectorStore {
     const result = await this.client.count({
       index: this.indexName,
     });
-    return result.body.count;
+    return result.count;
   }
 }
